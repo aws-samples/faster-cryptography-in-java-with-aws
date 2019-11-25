@@ -45,3 +45,15 @@ else
   echo "Gradle is already installed, skipping"
 fi
 
+# push-image.sh depends on jq
+sudo yum install -y jq
+
+# Upgrade Node
+nvm install 12
+nvm alias default 12
+nvm alias stable 12
+
+# Install CDK
+npm install -g aws-cdk
+cdk --version
+
