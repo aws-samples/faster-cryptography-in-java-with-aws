@@ -30,4 +30,8 @@ tag="latest"
 repo_uri="$(aws ecr describe-repositories --repository-names "$repo_name"| jq -r '.repositories[0]["repositoryUri"]')"
 repo_uri_with_tag="$repo_uri:$tag"
 docker tag "$image_name":"$tag" "$repo_uri_with_tag"
+
+# Ensure the ECR repo has been created
+cdk deploy fcj-deployment-infra --context "stage=$stage"
+
 docker push "$repo_uri_with_tag"
