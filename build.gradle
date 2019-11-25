@@ -1,0 +1,129 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '2.2.1.RELEASE'
+    id 'io.spring.dependency-management' version '1.0.8.RELEASE'
+    id 'com.palantir.docker' version '0.22.1'
+    id 'com.palantir.docker-run' version '0.22.1'
+    id 'com.github.ben-manes.versions' version '0.27.0'
+}
+
+group = 'com.amazonaws.fcj'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '8'
+targetCompatibility = '8'
+
+repositories {
+    mavenCentral()
+    maven { url "https://repo.spring.io/libs-release" }
+    maven { url "https://repo.spring.io/libs-milestone" }
+    maven { url "https://repo.spring.io/libs-snapshot" }
+}
+
+configurations {
+    implementation {
+        exclude(group: 'org.springframework.boot', module: 'spring-boot-starter-logging')
+    }
+    testImplementation {
+        exclude(group: 'junit', module: 'junit')
+    }
+}
+
+dependencies {
+    // Spring Boot starters
+    implementation('org.springframework.boot:spring-boot-starter-webflux')
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+
+    // Logging
+    implementation('org.springframework.boot:spring-boot-starter-log4j2')
+    implementation('com.lmax:disruptor:3.+')
+
+    // Test helpers
+    testImplementation('org.springframework.boot:spring-boot-starter-test')
+    testImplementation('org.junit.jupiter:junit-jupiter:5.+')
+    testImplementation('nl.jqno.equalsverifier:equalsverifier:3.+')
+    testImplementation('org.assertj:assertj-core:3.+')
+
+    // ACCP-related dependencies
+    implementation('org.bouncycastle:bcprov-ext-jdk15on:1.+')
+    implementation('software.amazon.cryptools:AmazonCorrettoCryptoProvider:1.+:linux-x86_64')
+
+    // ESDK to actually do the encryption
+    implementation('com.amazonaws:aws-encryption-sdk-java:1.+')
+
+    // AWS SDK 1.x. This is needed because AWS Encryption SDK for Java currently requires AWS SDK 1.x to talk to KMS.
+    implementation(platform('com.amazonaws:aws-java-sdk-bom:1.11.+'))
+    implementation('com.amazonaws:aws-java-sdk-sts')
+    implementation('com.amazonaws:aws-java-sdk-kms')
+    implementation('javax.xml.bind:jaxb-api:2.+')
+
+    // AWS SDK 2.x
+    implementation(platform('software.amazon.awssdk:bom:2.+'))
+    implementation('software.amazon.awssdk:s3')
+    implementation('software.amazon.awssdk:cloudwatch')
+    // Apache HTTP client inside AWS SDK requires Log4j 1.2 for wire logging.
+    implementation('org.apache.logging.log4j:log4j-1.2-api')
+
+    // Guava
+    implementation('com.google.guava:guava:28.1-jre')
+}
+
+task unpack(type: Copy) {
+    dependsOn bootJar
+    from(zipTree(tasks.bootJar.outputs.files.singleFile))
+    into("$buildDir/docker")
+}
+
+docker {
+    dependsOn unpack
+    name "${project.group}/${bootJar.archiveBaseName.get()}"
+}
+
+// Runs the service as a stand-alone container.
+dockerRun {
+    name 'faster-cryptography-in-java'
+    image 'com.amazonaws.fcj/faster-cryptography-in-java'
+    ports '8080:8080'
+    daemonize true
+    clean true
+}
+
+// Unit test configuration.
+test {
+    useJUnitPlatform {
+        includeEngines 'junit-jupiter'
+        includeTags 'unit'
+        systemProperty 'java.util.logging.manager', 'org.apache.logging.log4j.jul.LogManager'
+    }
+}
+
+// Runs integration tests. Integration tests assume the service runs on localhost:8080.
+task integTest(type: Test) {
+    useJUnitPlatform {
+        includeEngines 'junit-jupiter'
+        includeTags 'integ'
+        systemProperty 'java.util.logging.manager', 'org.apache.logging.log4j.jul.LogManager'
+    }
+    description = 'Runs integration tests.'
+    group = 'verification'
+
+    shouldRunAfter test
+	// The following ensures the result of the integration test is never
+	// cached by Gradle. We don't want that because we want to run integration
+	// tests every time we invoke the task.
+    outputs.upToDateWhen { false }
+}
+
+task perfTest(type: Test) {
+    useJUnitPlatform {
+        includeEngines 'junit-jupiter'
+        includeTags 'perf'
+        systemProperty 'java.util.logging.manager', 'org.apache.logging.log4j.jul.LogManager'
+    }
+    description = 'Runs performance tests.'
+    group = 'verification'
+
+    // The following ensures the result of the integration test is never
+    // cached by Gradle. We don't want that because we want to run integration
+    // tests every time we invoke the task.
+    outputs.upToDateWhen { false }
+}

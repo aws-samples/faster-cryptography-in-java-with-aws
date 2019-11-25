@@ -1,0 +1,8 @@
+version: '2'
+services:
+  app:
+    build:
+      # Build an image from the Dockerfile in the current directory
+      context: build/docker
+    ports:
+      - 8080:8080

@@ -1,0 +1,50 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.amazonaws.fcj.cdk'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '8'
+targetCompatibility = '8'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation(platform("org.junit:junit-bom:5.+"))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+
+    // Test helpers
+    testImplementation('nl.jqno.equalsverifier:equalsverifier:3.+')
+    testImplementation('org.assertj:assertj-core:3.+')
+
+    // Guava
+    implementation('com.google.guava:guava:28.1-jre')
+
+    // AWS CDK
+    def cdkVersion = '1.17.1.DEVPREVIEW'
+    implementation("software.amazon.awscdk:core:${cdkVersion}")
+    implementation("software.amazon.awscdk:s3:${cdkVersion}")
+    implementation("software.amazon.awscdk:kms:${cdkVersion}")
+    implementation("software.amazon.awscdk:iam:${cdkVersion}")
+    implementation("software.amazon.awscdk:ec2:${cdkVersion}")
+    implementation("software.amazon.awscdk:ecs:${cdkVersion}")
+    implementation("software.amazon.awscdk:ecs-patterns:${cdkVersion}")
+    implementation("software.amazon.awscdk:ecr:${cdkVersion}")
+    implementation("software.amazon.awscdk:elasticloadbalancingv2:${cdkVersion}")
+    implementation("software.amazon.awscdk:cloud9:${cdkVersion}")
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
+application {
+    mainClassName = 'com.amazonaws.fcj.cdk.FcjApp'
+}
+

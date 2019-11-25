@@ -1,0 +1,17 @@
+<Configuration status="INFO">
+  <Appenders>
+    <Console name="ConsoleAppender" target="SYSTEM_ERR">
+      <PatternLayout pattern="%d{YYYY-MM-dd HH:mm:ss.SSS} %-5p [%-15.15thread][%-40.40logger] %m%n" />
+    </Console>
+  </Appenders>
+
+  <Loggers>
+    <Root level="INFO">
+      <AppenderRef ref="ConsoleAppender"/>
+    </Root>
+    <Logger name="software.amazon.awssdk" level="WARN" />
+    <Logger name="software.amazon.awssdk.request" level="WARN" />
+    <!-- Uncomment to enable wire debugging -->
+    <!-- <Logger name="org.apache.http.wire" level="DEBUG" /> -->
+  </Loggers>
+</Configuration>
