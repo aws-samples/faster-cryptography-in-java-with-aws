@@ -19,6 +19,49 @@ much CPU time was spent encrypting/decrypting a unit of data so that we can
 measure how much Amazon Corretto Crypto Provider speeds up our service.
 
 ## Instructions
+### Dev Environment Setup
+1. Log in to your AWS account.
+2. Start your Cloud9 IDE [TODO: link to cloudformation]
+3. Run the following commands in your Cloud9 terminal to clone this repository
+   and set up your Cloud9 environment to work with this project.
+```
+git clone git@github.com:aws-samples/faster-cryptography-in-java-with-aws.git
+cd faster-cryptography-in-java-with-aws
+./setup_env.sh
+```
+
+### Deploying the sample
+The code sample uses [AWS Cloud Development Kit](https://aws.amazon.com/cdk/) to
+deploy this code sample as a service running on AWS.
+
+When the sample service is deployed to an AWS account, the particular resources
+are always identified and differentiated by the stage parameter. Differentiating
+resources by stage allows you to have multiple independent stacks of the sample
+service in one AWS account. Whenever you use the `cdk` command, you must also
+specify the stage as a context. So instead of running `cdk ls` to list stacks,
+you must use `cdk ls --context "stage=beta"`.
+
+To make things simpler, all of the following commands assume the `STAGE` shell
+variable has been set. 
+```
+STAGE="beta"
+```
+
+To build the sample service, package it into a container, and push the container to a repository (in our case, Amazon ECR):
+```
+./push-image $STAGE
+```
+
+To deploy the sample service using the latest image in the container repository:
+```
+cdk deploy fcj-svc --context "stage=$STAGE"
+```
+
+Please note: when you push a new image and your infrastructure is already in
+place (you have deployed "fcj-svc" stack), you have to manually kill the
+currently running AWS Fargate task in your service. A new task will be
+automatically started with the new image. This workaround is needed because we
+don't have build & deployment automation in place for this workshop.
 
 ## Under the Hood
 * [Amazon Corretto Crypto
@@ -75,4 +118,4 @@ CloudWatch is encrypted using TLS.
    http://localhost:8080/file/my-file-id`
 
 ## License
-Faster Cryptography in Java code sample is licensed under Apache 2.0.
+"Faster Cryptography in Java with AWS" code sample is licensed under Apache 2.0.
