@@ -24,7 +24,7 @@ dependencies {
     implementation('com.google.guava:guava:28.1-jre')
 
     // AWS CDK
-    def cdkVersion = '1.17.1.DEVPREVIEW'
+    def cdkVersion = '1.18.0'
     implementation("software.amazon.awscdk:core:${cdkVersion}")
     implementation("software.amazon.awscdk:s3:${cdkVersion}")
     implementation("software.amazon.awscdk:kms:${cdkVersion}")
