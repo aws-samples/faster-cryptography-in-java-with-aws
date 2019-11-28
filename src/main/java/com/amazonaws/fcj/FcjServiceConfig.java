@@ -5,6 +5,7 @@ package com.amazonaws.fcj;
 
 import static java.lang.String.format;
 
+import com.amazon.corretto.crypto.provider.AmazonCorrettoCryptoProvider;
 import com.amazonaws.fcj.exceptions.FcjServiceException;
 import com.amazonaws.encryptionsdk.AwsCrypto;
 import com.amazonaws.encryptionsdk.kms.KmsMasterKeyProvider;
@@ -31,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.env.Environment;
 import org.springframework.web.reactive.config.EnableWebFlux;
 
@@ -54,8 +56,10 @@ class FcjServiceConfig {
 //    @Bean
 //    @Lazy(false) // Disable lazy loading just in case the context has lazy loading on by default.
 //    void enableAccp() {
-//        com.amazon.corretto.crypto.provider.AmazonCorrettoCryptoProvider.install();
-//        LOG.info("Amazon Corretto Crypto Provider was successfully installed");
+//        AmazonCorrettoCryptoProvider.install();
+//        AmazonCorrettoCryptoProvider.INSTANCE.assertHealthy();
+//        LOG.info("Amazon Corretto Crypto Provider {} was successfully installed",
+//                 AmazonCorrettoCryptoProvider.INSTANCE.getVersionStr());
 //    }
 
     @Bean
