@@ -53,8 +53,8 @@ public class FcjSvcStack extends Stack {
 
     public FcjSvcStack(final Construct parent, final String id) {
         super(parent, id, StackProps.builder()
-                .stackName(ServiceName.getWithStage(CaseFormat.LOWER_HYPHEN, parent))
-                .description("Main service stack for FCJ")
+                .stackName(ServiceName.getWithStage(CaseFormat.LOWER_HYPHEN, parent) + "-svc-stack")
+                .description("Main service stack for " + ServiceName.getWithStage(CaseFormat.LOWER_HYPHEN, parent))
                 .build());
         svcNameWithStage = ServiceName.getWithStage(CaseFormat.LOWER_HYPHEN, this);
 
@@ -84,6 +84,7 @@ public class FcjSvcStack extends Stack {
                         "FargateSvc",
                         ApplicationLoadBalancedFargateServiceProps.builder()
                                 .cluster(ecsCluster)
+                                .serviceName(svcNameWithStage)
                                 .cpu(512)
                                 .memoryLimitMiB(ECS_TASK_MEMORY_LIMIT_MB)
                                 .publicLoadBalancer(true)
