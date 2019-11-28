@@ -73,11 +73,6 @@ public class S3FileStore implements FileStore {
     private static final String S3_OBJECT_KEY_PREFIX = "files/";
     private static final int ENCRYPTION_BUFFER_SIZE_BYTES = 16_384;
 
-    /**
-     * How long to wait for the task pool to finish outstanding tasks after the shutdown() method is called.
-     */
-    private static final Duration TASK_POOL_SHUTDOWN_GRACE_PERIOD = Duration.ofSeconds(10);
-
     private static final int BUFFER_THRESHOLD_BYTES = 6 * 1024 * 1024;
 
     private final Scheduler scheduler = Schedulers.parallel();
@@ -162,15 +157,13 @@ public class S3FileStore implements FileStore {
                 .bufferUntil(new SizeMoreThan<>(BUFFER_THRESHOLD_BYTES, arr -> arr.length))
                 // Concatenate all the chunks from the list into one large byte array.
                 .map(Utils::concat)
-                // Prepare the PartUpload structure.
-                .map(encryptedPart -> new PartUpload(uploadInitFuture, partCounter.incrementAndGet(), encryptedPart))
                 // Split this flux of PartUpload structures into CPU_CORES sub-fluxes and sequentially start
                 // initiating uploads for items on each. Suppose we have 80 parts and 8 CPU cores. This flux will be
                 // split into 8 sub-fluxes and parts coming through will be distributed evenly into each sub-flux.
                 // Each sub-flux behaves synchronously: it will not start uploading the next part until the previous
                 // one is finished.
                 .parallel().runOn(scheduler)
-                .concatMap(PartUpload::initiateUpload)
+                .concatMap(encryptedPart -> uploadPart(encryptedPart, uploadInitFuture, partCounter))
                 // Collect all the ongoing chunk uploads into a list. This basically means the flux will wait until
                 // all part uploads were initiated.
                 .sequential()
@@ -479,43 +472,80 @@ public class S3FileStore implements FileStore {
         }
     }
 
-    private class PartUpload {
+    Mono<PartUpload> uploadPart(final byte[] partBytes,
+                                final CompletableFuture<CreateMultipartUploadResponse> uploadInitFuture,
+                                final AtomicInteger partCounter) {
+        final PartUpload partUpload = new PartUpload(uploadInitFuture, partCounter.incrementAndGet(), partBytes.length);
+        LOG.info("Initiating {}", partUpload);
+        final byte[] partChecksum = Utils.computeETagChecksum(partBytes);
+        partUpload.setPartChecksum(partChecksum);
+        final UploadPartRequest uploadPartRequest = partUpload.createUploadPartRequest();
+        return Mono.fromFuture(s3.uploadPart(uploadPartRequest, new ByteArrayAsyncRequestBody(partBytes)))
+                .handle((resp, sink) -> completePartUpload(resp, sink, partUpload));
+    }
+
+    /**
+     * This function is called when a part finishes uploading. It's primary function is to verify the ETag of the
+     * part we just uploaded.
+     */
+    private void completePartUpload(final UploadPartResponse uploadPartResponse,
+                                    final SynchronousSink<PartUpload> sink,
+                                    final PartUpload partUpload) {
+        final String partEtag = uploadPartResponse.eTag();
+        partUpload.setPartEtag(partEtag);
+        final String checksumEtag = createETag(partUpload.getPartChecksum());
+        if (checksumEtag.equals(partEtag)) {
+            LOG.info("Finished {}", partUpload);
+            sink.next(partUpload);
+        } else {
+            sink.error(new FcjServiceException(format(
+                    "ETag mismatch when uploading part %s, our ETag was %s but S3 returned %s",
+                    partUpload.getPartNumber(), checksumEtag, partEtag)));
+        }
+    }
+
+    /**
+     * Represents the state around uploading the part but not the actual content of the part.
+     */
+    private static class PartUpload {
         private final String bucketName;
         private final String objectPath;
         private final String uploadId;
         private final int partNumber;
-        private byte[] part;
+        private long partLength;
         private byte[] partChecksum;
         private String partEtag;
 
         PartUpload(final CompletableFuture<CreateMultipartUploadResponse> uploadInitFuture,
-                   final int partNumber,
-                   final byte[] part) {
+                   final int partNumber, final long partLength) {
             final CreateMultipartUploadResponse uploadInitResp = Futures.getUnchecked(uploadInitFuture);
             this.bucketName = uploadInitResp.bucket();
             this.objectPath = uploadInitResp.key();
             this.uploadId = uploadInitResp.uploadId();
             this.partNumber = partNumber;
-            this.part = part;
+            this.partLength = partLength;
         }
 
-        Mono<PartUpload> initiateUpload() {
-            LOG.info("Initiating part upload: bucket={}, objectPath={}, uploadId={}, partNumber={}, length={} bytes",
-                     bucketName, objectPath, uploadId, partNumber, part.length);
-            partChecksum = Utils.computeETagChecksum(part);
-            final UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
+        UploadPartRequest createUploadPartRequest() {
+            return UploadPartRequest.builder()
                     .bucket(bucketName)
                     .key(objectPath)
                     .uploadId(uploadId)
                     .partNumber(partNumber)
-                    .contentLength((long) part.length)
+                    .contentLength(partLength)
                     .build();
-            return Mono.fromFuture(s3.uploadPart(uploadPartRequest, new ByteArrayAsyncRequestBody(part)))
-                    .handle(this::completePartUpload);
         }
 
         int getPartNumber() {
             return partNumber;
+        }
+
+        public void setPartEtag(final String partEtag) {
+            this.partEtag = partEtag;
+        }
+
+        public void setPartChecksum(final byte[] partChecksum) {
+            this.partChecksum = partChecksum;
         }
 
         byte[] getPartChecksum() {
@@ -537,30 +567,10 @@ public class S3FileStore implements FileStore {
                     ", uploadId='" + uploadId + '\'' +
                     ", partNumber=" + partNumber +
                     ", partEtag='" + partEtag + '\'' +
+                    ", partLength='" + partLength + '\'' +
                     '}';
         }
 
-        /**
-         * This function is called when a part finishes uploading. It's primary function is to verify the ETag of the
-         * part we just uploaded.
-         */
-        private void completePartUpload(final UploadPartResponse uploadPartResponse,
-                                        final SynchronousSink<PartUpload> sink) {
-            // Lose the reference to the byte array we just uploaded. This is to ensure that when we gather all the
-            // PartUpload objects in one large list at the end of the entire upload (which is necessary to finish the
-            // upload in S3), we also don't gather all of the data.
-            part = null;
 
-            partEtag = uploadPartResponse.eTag();
-            final String checksumEtag = createETag(partChecksum);
-            if (checksumEtag.equals(partEtag)) {
-                LOG.info("Finished {}", this);
-                sink.next(this);
-            } else {
-                sink.error(new FcjServiceException(format(
-                        "ETag mismatch when uploading part %s, our ETag was %s but S3 returned %s",
-                        partNumber, checksumEtag, partEtag)));
-            }
-        }
     }
 }
