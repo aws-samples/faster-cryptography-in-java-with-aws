@@ -21,47 +21,80 @@ measure how much Amazon Corretto Crypto Provider speeds up our service.
 ## Instructions
 ### Dev Environment Setup
 1. Log in to your AWS account.
-2. Start your Cloud9 IDE [TODO: link to cloudformation]
-3. Run the following commands in your Cloud9 terminal to clone this repository
-   and set up your Cloud9 environment to work with this project.
+1. Create your Cloud9 IDE. You can do it manully or click
+   [here](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://cf-templates-1kyi1ggs3ko8w-us-west-2.s3-us-west-2.amazonaws.com/fcj-dev-env.template.json&stackName=Dev-Env-for-FCJ-in-Java-with-AWS)
+   to use a prepared AWS CloudFormation template.
+1. If you don't have it open already, open the [Cloud9
+   console](https://us-west-2.console.aws.amazon.com/cloud9/home?region=us-west-2#)
+   and launch your Cloud9 IDE.
+1. Run the following commands in the terminal of your Cloud9 IDE to clone this
+   repository and set up your environment to work with this project.
 ```
 git clone git@github.com:aws-samples/faster-cryptography-in-java-with-aws.git
 cd faster-cryptography-in-java-with-aws
 ./setup_env.sh
 ```
 
-### Deploying the sample
+### Building the Sample Code
 The code sample uses [AWS Cloud Development Kit](https://aws.amazon.com/cdk/) to
 deploy this code sample as a service running on AWS.
 
-When the sample service is deployed to an AWS account, the particular resources
-are always identified and differentiated by the stage parameter. Differentiating
-resources by stage allows you to have multiple independent stacks of the sample
-service in one AWS account. Whenever you use the `cdk` command, you must also
-specify the stage as a context. So instead of running `cdk ls` to list stacks,
-you must use `cdk ls --context "stage=beta"`.
+When the sample service is deployed to an AWS account, the names of its
+resources (e.g., AWS Fargate cluster) always include the stage parameter. This
+helps differentiate them from resources belonging to another instance.
+Differentiating resources by stage allows you to have multiple independent
+stacks of the sample service in one AWS account. Whenever you use the `cdk`
+command, you must also specify the stage as a context. So instead of running
+`cdk ls` to list stacks, you must use `cdk ls --context "stage=beta"`.
 
 To make things simpler, all of the following commands assume the `STAGE` shell
-variable has been set. 
+variable has been set.
 ```
 STAGE="beta"
 ```
 
-To build the sample service, package it into a container, and push the container to a repository (in our case, Amazon ECR):
+The following commands deploy the build stack and push the code to the stack's
+CodeCommit repository. The build stack is driven by a pipeline (AWS
+CodePipeline) that takes the source code, builds a container, and pushes the
+container to a container registry (Amazon ECR).
 ```
-./push-image $STAGE
+cdk deploy fcj-build --context "stage=$STAGE"
+# CloudFormation output "FcjSourceRepoCloneUrlHttp" contains the CodeCommit URL
+# to use as remote in the following command.
+git remote add fcj-$STAGE <FILL IN codecommit remote url from CF output>
+git push fcj-$STAGE
 ```
 
-To deploy the sample service using the latest image in the container repository:
+There are two more CloudFormation outputs you should explore at this point:
+1. Pipeline console URL shows you the pipeline and how the build process is
+   coming along.
+2. Container registry (Amazon ECR) console URL shows you containers in your
+   registry.
+
+### Deploying the Sample Code
+When your pipeline finishes pushing the container to the registry, you are ready
+to deploy the service stack. Service stack is responsible taking the container
+from the container registry, running it using AWS Fargate, and making it
+available on the network through a load balancer.
 ```
 cdk deploy fcj-svc --context "stage=$STAGE"
 ```
 
-Please note: when you push a new image and your infrastructure is already in
-place (you have deployed "fcj-svc" stack), you have to manually kill the
-currently running AWS Fargate task in your service. A new task will be
-automatically started with the new image. This workaround is needed because we
-don't have build & deployment automation in place for this workshop.
+AWS Fargate will automatically use the latest container in the registry when
+starting a new task. However, AWS Fargate will not automatically replace
+currently running tasks when a new container is pushed into the container
+registry. The solution to this problem is to add AWS CodeDeploy with Blue/Green
+Deployments to the end of your pipeline. Unfortunately, this is currently not
+supported by AWS CDK.
+
+For the purposes of our workshop, we'll simply poke AWS Fargate using AWS CLI
+and force a new deployment:
+```
+aws ecs update-service --cluster faster-cryptography-in-java-$STAGE --service faster-cryptography-in-java-$STAGE --force-new-deployment
+```
+
+### Measuring Performance
+
 
 ## Under the Hood
 * [Amazon Corretto Crypto
@@ -78,8 +111,15 @@ don't have build & deployment automation in place for this workshop.
   the system.
 * [Amazon CloudWatch](https://aws.amazon.com/cloudwatch/) aggregates metrics
   submitted by the service and provides insight into its performance.
-* [Amazon ECS](https://aws.amazon.com/ecs/) is used to run the Docker container
+* [Amazon ECS](https://aws.amazon.com/ecs/) and [AWS
+  Fargate](https://aws.amazon.com/fargate/) are used to run the container
   containing the sample.
+* [AWS CodeCommit](https://aws.amazon.com/codecommit/), [AWS
+  CodeBuild](https://aws.amazon.com/codebuild/), and [AWS
+  CodePipeline](https://aws.amazon.com/codepipeline/) are used together to build
+  the source code, package the result into a container, and push it into the
+  container registry ([Amazon Elastic Container
+  Registry](https://aws.amazon.com/ecr/)).
 * [Project Reactor](https://projectreactor.io/) makes it easy to use reactive
   programming in Java. Reactive applications "react" to changes such as I/O
   events without actively waiting (blocking) a thread until a change happens. It
@@ -116,6 +156,35 @@ CloudWatch is encrypted using TLS.
    --data-binary @myfile http://localhost:8080/file`
  * Download a file: `curl --verbose -o /local/path/to/my-file
    http://localhost:8080/file/my-file-id`
+
+## What's a Reactive System?
+Modern Java libraries such as [AWS SDK for Java
+2.0](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/welcome.html)
+incorporate support for *reactive* processing. In reactive systems, subscribers
+(consumers of data) drive data processing by notifying producers (using an
+event) they are ready to receive a certain amount of data. A reactive producer
+reacts to requests from a subscriber. When there is demand and the producer has
+something to produce, it sends the data as an event. The subscriber then reacts
+to the response. Producers and subscribers never have to wait for each other and
+block the thread they are running on. Instead, control is handed to them by a
+*scheduler* in response to an event.
+
+Contrast this with a typical procedural model where the producer of information
+does the computation, passes it to the consumer (say a method call), and waits
+until the consumer can produce a response.
+
+In practical terms, reactive systems allow us to write services where a thread
+never blocks waiting for a response. Processing is defined in small chunks which
+are executed when the prerequisite data (e.g., a response to a remote network
+call) is available.
+
+All of this allows us to build scalable systems that stay responsive under high
+load, are resilient to failure, and respond to customer requests with lower
+latency.
+
+To learn more, take a look at [Reactive
+Manifesto](https://www.reactivemanifesto.org/) and [Reactive
+Streams](https://www.reactive-streams.org/).
 
 ## License
 "Faster Cryptography in Java with AWS" code sample is licensed under Apache 2.0.
