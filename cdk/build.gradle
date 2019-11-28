@@ -35,6 +35,10 @@ dependencies {
     implementation("software.amazon.awscdk:ecr:${cdkVersion}")
     implementation("software.amazon.awscdk:elasticloadbalancingv2:${cdkVersion}")
     implementation("software.amazon.awscdk:cloud9:${cdkVersion}")
+    implementation("software.amazon.awscdk:codebuild:${cdkVersion}")
+    implementation("software.amazon.awscdk:codepipeline:${cdkVersion}")
+    implementation("software.amazon.awscdk:codepipeline-actions:${cdkVersion}")
+    implementation("software.amazon.awscdk:codecommit:${cdkVersion}")
 }
 
 test {
