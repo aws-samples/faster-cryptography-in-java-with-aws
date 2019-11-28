@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euf -o pipefail  # Makes bash behave sanely, see https://sipb.mit.edu/doc/safe-shell/
 
 # This script sets up the development environment inside of a Cloud9 instance based on Amazon Linux 2018.03 AMI.
 
@@ -21,6 +20,8 @@ fi
 sudo yum install -y jq
 
 # Upgrade Node
+NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 nvm install 12
 nvm alias default 12
 nvm alias stable 12
