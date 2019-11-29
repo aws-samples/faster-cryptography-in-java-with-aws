@@ -173,10 +173,15 @@ public class S3FileStore implements FileStore {
                 .map(Utils::concat)
                 // Wait until the CreateMultiPartUpload call finishes. We can't start uploading parts before then.
                 .delayUntil(part -> uploadInitMono)
+                // Number the part. This MUST be done before we parallelize because S3 requires that only the last
+                // part can be less than 5MB. If we increment part numbers in parallel we can have a situation where,
+                // for example, next to last part is the last remaining bit, which ends up smaller than 5MB and we
+                // get an exception from S3!
+                .map(partBytes -> new Part(partBytes, partCounter.incrementAndGet()))
                 // Split this flux of PartUpload structures into UPLOAD_PART_PARALLELISM rails (sub-fluxes) and
                 // sequentially start initiating uploads for items on each rail.
                 .parallel(UPLOAD_PART_PARALLELISM, UPLOAD_PART_PARALLEL_PREFETCH).runOn(scheduler)
-                .concatMap(encryptedPart -> initiatePartUpload(encryptedPart, uploadInitMono, partCounter))
+                .concatMap(part -> initiatePartUpload(part, uploadInitMono))
                 // Collect all the ongoing chunk uploads into a list. This basically means the flux will wait until
                 // all part uploads were initiated.
                 .sequential()
@@ -412,25 +417,22 @@ public class S3FileStore implements FileStore {
     /**
      * Kicks off the actual uploading of the part and returns a class that represents the process ({@link PartUpload}.
      *
-     * @param partBytes The actual contents of the part. It's important that we lose the reference to this byte array
-     * when the part has been uploaded.
+     * @param part The part to upload.
      * @param uploadInitMono The {@link Mono} we need to get the response to CreateMultiPartUpload from S3.
-     * @param partCounter The atomic counter we use to keep track of parts.
      * @return Another {@link Mono} containing state related to uploading this part.
      */
     private Mono<PartUpload> initiatePartUpload(
-            final byte[] partBytes,
-            final Mono<CreateMultipartUploadResponse> uploadInitMono,
-            final AtomicInteger partCounter) {
-        final int partNumber = partCounter.incrementAndGet();
+            final Part part,
+            final Mono<CreateMultipartUploadResponse> uploadInitMono) {
         return uploadInitMono
-                .map(uploadInitResp -> new PartUpload(uploadInitResp, partNumber, partBytes.length))
+                .map(uploadInitResp -> new PartUpload(uploadInitResp, part))
                 .flatMap(partUpload -> {
                     LOG.info("Initiating {}", partUpload);
-                    final byte[] partChecksum = Utils.computeETagChecksum(partBytes);
+                    final byte[] partChecksum = Utils.computeETagChecksum(part.getPartBytes());
                     partUpload.setPartChecksum(partChecksum);
                     final UploadPartRequest uploadPartRequest = partUpload.createUploadPartRequest();
-                    return Mono.fromFuture(s3.uploadPart(uploadPartRequest, new ByteArrayAsyncRequestBody(partBytes)))
+                    return Mono.fromFuture(s3.uploadPart(uploadPartRequest,
+                                                         new ByteArrayAsyncRequestBody(part.getPartBytes())))
                             .handle((resp, sink) -> completePartUpload(resp, sink, partUpload));
                 });
     }
@@ -541,6 +543,28 @@ public class S3FileStore implements FileStore {
         }
     }
 
+    private static class Part {
+        private final byte[] partBytes;
+        private final int partNumber;
+
+        Part(final byte[] partBytes, final int partNumber) {
+            this.partBytes = partBytes;
+            this.partNumber = partNumber;
+        }
+
+        public byte[] getPartBytes() {
+            return partBytes;
+        }
+
+        public int getPartNumber() {
+            return partNumber;
+        }
+
+        public int getPartLength() {
+            return partBytes.length;
+        }
+    }
+
     /**
      * Represents the state around uploading the part but not the actual content of the part.
      */
@@ -554,12 +578,12 @@ public class S3FileStore implements FileStore {
         private String partEtag;
 
         PartUpload(final CreateMultipartUploadResponse uploadInitResp,
-                   final int partNumber, final long partLength) {
+                   final Part part) {
             this.bucketName = uploadInitResp.bucket();
             this.objectPath = uploadInitResp.key();
             this.uploadId = uploadInitResp.uploadId();
-            this.partNumber = partNumber;
-            this.partLength = partLength;
+            this.partNumber = part.getPartNumber();
+            this.partLength = part.getPartLength();
         }
 
         UploadPartRequest createUploadPartRequest() {
