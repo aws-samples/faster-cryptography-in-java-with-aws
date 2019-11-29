@@ -20,19 +20,29 @@ import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 @PerfTest
-public class PerformanceTest {
+class PerformanceTest {
     private static final Logger LOG = LogManager.getLogger();
 
-    private final WebClient client = WebClient.create("http://localhost:8080");
+    private final String baseUrl;
+    private final WebClient client;
+
+    private final int fileCount;
+    private final DataSize fileSize;
+
+    PerformanceTest() {
+        baseUrl = TestUtils.getEnvVar("FCJ_TEST_BASE_URL","http://localhost:8080");
+        client = WebClient.create(baseUrl);
+
+        fileCount = TestUtils.getEnvVar("FCJ_TEST_FILE_COUNT", Integer::parseInt, 32);
+        fileSize = TestUtils.getEnvVar("FCJ_TEST_FILE_SIZE", DataSize::parse, DataSize.ofMegabytes(16));
+    }
 
     @Test
     void parallelUpload() {
-        final int filesCount = 32;
-        final DataSize fileSize = DataSize.ofMegabytes(128);
+        LOG.info("Uploading {} files of size {} to {}", fileCount, fileSize, baseUrl);
         final int parallelism = 4;
-
         final Scheduler scheduler = Schedulers.parallel();
-        Flux.range(1, filesCount)
+        Flux.range(1, fileCount)
                 .parallel(parallelism).runOn(scheduler)
                 .concatMap(i -> {
                     LOG.info("Starting to upload file #{} of size {}", i, fileSize);

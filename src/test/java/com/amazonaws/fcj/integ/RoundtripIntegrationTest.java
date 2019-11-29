@@ -31,7 +31,14 @@ class RoundtripIntegrationTest {
 
     private static final Logger LOG = LogManager.getLogger();
     private static final Duration HTTP_OP_TIMEOUT = Duration.ofMinutes(5);
-    private final WebClient client = WebClient.create("http://localhost:8080");
+
+    private final String baseUrl;
+    private final WebClient client;
+
+    RoundtripIntegrationTest() {
+        baseUrl = TestUtils.getEnvVar("FCJ_TEST_BASE_URL", "http://localhost:8080");
+        client = WebClient.create(baseUrl);
+    }
 
     @BeforeAll
     static void enableAccp() {

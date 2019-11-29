@@ -5,6 +5,7 @@ package com.amazonaws.fcj;
 
 import java.security.SecureRandom;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 import org.springframework.util.unit.DataSize;
 
@@ -58,5 +59,17 @@ public class TestUtils {
     private static AtomicLong getChunkCount(final int chunkSizeBytes, final DataSize totalSize) {
         final double chunkCountFp = (double) totalSize.toBytes() / chunkSizeBytes;
         return new AtomicLong((long) Math.ceil(chunkCountFp));
+    }
+
+    public static String getEnvVar(final String varName, final String defaultVal) {
+        return getEnvVar(varName, Function.identity(), defaultVal);
+    }
+
+    public static <T> T getEnvVar(final String varName, final Function<String, T> converter, final T defaultVal) {
+        final String val = System.getenv(varName);
+        if (val == null) {
+            return defaultVal;
+        }
+        return converter.apply(val);
     }
 }
