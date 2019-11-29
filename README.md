@@ -45,12 +45,12 @@ helps differentiate them from resources belonging to another instance.
 Differentiating resources by stage allows you to have multiple independent
 stacks of the sample service in one AWS account. Whenever you use the `cdk`
 command, you must also specify the stage as a context. So instead of running
-`cdk ls` to list stacks, you must use `cdk ls --context "stage=beta"`.
+`cdk ls` to list stacks, you must use `cdk ls --context "stage=alpha"`.
 
-To make things simpler, all of the following commands assume the `STAGE` shell
-variable has been set.
+To make things simpler, all of the following commands assume the `STAGE`
+environment variable has been set in your shell.
 ```
-STAGE="beta"
+STAGE="alpha"
 ```
 
 The following commands deploy the build stack and push the code to the stack's
@@ -84,8 +84,8 @@ AWS Fargate will automatically use the latest container in the registry when
 starting a new task. However, AWS Fargate will not automatically replace
 currently running tasks when a new container is pushed into the container
 registry. The solution to this problem is to add AWS CodeDeploy with Blue/Green
-Deployments to the end of your pipeline. Unfortunately, this is currently not
-supported by AWS CDK.
+Deployments to the end of your pipeline. Unfortunately, at the time of writing
+this is not yet supported in AWS CDK.
 
 For the purposes of our workshop, we'll simply poke AWS Fargate using AWS CLI
 and force a new deployment:
@@ -94,7 +94,33 @@ aws ecs update-service --cluster faster-cryptography-in-java-$STAGE --service fa
 ```
 
 ### Measuring Performance
+Performance test can be started by invoking Gradle task `perfTest` (see below).
+The tests are configured using environment variables (with some sensible
+defaults).
+```
+export FCJ_TEST_BASE_URL="http://your-lb.amazonaws.com/"
+FCJ_TEST_FILE_COUNT=10 FCJ_TEST_FILE_SIZE=32MB ./gradlew perfTest
+```
 
+When the performance test has run its course, check out your CloudWatch metrics.
+The sample service emits two metrics called `encrypt.duration.perMb` and
+`decrypt.duration.perMb`.
+
+You can use the following link to CloudWatch console if your stack runs in
+us-west-2 and your stage is "alpha":
+```
+https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#metricsV2:graph=~(view~'timeSeries~stacked~false~metrics~(~(~'faster-cryptography-in-java-alpha~'encrypt.duration.perMb~'Stage~'alpha~'Region~'us-west-2))~region~'us-west-2);query=~'*7bfaster-cryptography-in-java-alpha*2cRegion*2cStage*7d
+```
+
+### Enabling Amazon Corretto Crypto Provider
+Now that we have the ability to measure performance of our system, we can enable
+ACCP and see what difference it's going to make.
+
+Open file
+[FcjServiceConfig](https://github.com/aws-samples/faster-cryptography-in-java-with-aws/blob/master/src/main/java/com/amazonaws/fcj/FcjServiceConfig.java#L56)
+and find a bean called "enableAccp". Uncomment it to enable ACCP. Deploy the
+sample again (see above), measure performance again, and see if it made any
+difference!
 
 ## Under the Hood
 * [Amazon Corretto Crypto
@@ -185,6 +211,10 @@ latency.
 To learn more, take a look at [Reactive
 Manifesto](https://www.reactivemanifesto.org/) and [Reactive
 Streams](https://www.reactive-streams.org/).
+
+The sample service uses reactive components extensively, in particular the
+S3FileStore class. Understanding reactive systems is by no means necessary for
+understanding ACCP. It's just bonus content.
 
 ## License
 "Faster Cryptography in Java with AWS" code sample is licensed under Apache 2.0.
