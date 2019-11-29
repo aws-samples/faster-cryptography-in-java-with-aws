@@ -180,11 +180,11 @@ public class S3FileStore implements FileStore {
                 .map(partBytes -> new Part(partBytes, partCounter.incrementAndGet()))
                 // Split this flux of PartUpload structures into UPLOAD_PART_PARALLELISM rails (sub-fluxes) and
                 // sequentially start initiating uploads for items on each rail.
-                .parallel(UPLOAD_PART_PARALLELISM, UPLOAD_PART_PARALLEL_PREFETCH).runOn(scheduler)
+//                .parallel(UPLOAD_PART_PARALLELISM, UPLOAD_PART_PARALLEL_PREFETCH).runOn(scheduler)
                 .concatMap(part -> initiatePartUpload(part, uploadInitMono))
                 // Collect all the ongoing chunk uploads into a list. This basically means the flux will wait until
                 // all part uploads were initiated.
-                .sequential()
+//                .sequential()
                 // This is where we pause until all part uploads are finished.
                 .collectList()
                 // Now that we have all the completed parts, we'll complete the multi-part upload.
