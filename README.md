@@ -22,7 +22,7 @@ measure how much Amazon Corretto Crypto Provider speeds up our service.
 ### Dev Environment Setup
 1. Log in to your AWS account.
 1. Create your Cloud9 IDE. You can do it manully or click
-   [here](https://raw.githubusercontent.com/aws-samples/faster-cryptography-in-java-with-aws/master/dev/fcj-dev-env.template.json&stackName=Dev-Env-for-FCJ-in-Java-with-AWS)
+   [here](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://faster-cryptography-in-java-with-aws.s3-us-west-2.amazonaws.com/cf-templates/fcj-dev-env.template.json&stackName=Dev-Env-for-FCJ-in-Java-with-AWS)
    to use a prepared AWS CloudFormation template.
 1. If you don't have it open already, open the [Cloud9
    console](https://us-west-2.console.aws.amazon.com/cloud9/home?region=us-west-2#)
