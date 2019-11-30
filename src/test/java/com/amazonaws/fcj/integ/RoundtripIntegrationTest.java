@@ -64,6 +64,7 @@ class RoundtripIntegrationTest {
                 .body(randomHashingFlux, byte[].class)
                 .retrieve()
                 .bodyToMono(FileMetadata.class)
+                .retryBackoff(2, Duration.ofSeconds(3))
                 .block(HTTP_OP_TIMEOUT);
 
         assertNotNull(fm);
@@ -77,6 +78,7 @@ class RoundtripIntegrationTest {
                 .accept(MediaType.APPLICATION_OCTET_STREAM)
                 .retrieve()
                 .bodyToFlux(byte[].class)
+                .retryBackoff(2, Duration.ofSeconds(3))
                 .transformDeferred(f -> f.doOnNext(md::update))
                 .blockLast(HTTP_OP_TIMEOUT);
 

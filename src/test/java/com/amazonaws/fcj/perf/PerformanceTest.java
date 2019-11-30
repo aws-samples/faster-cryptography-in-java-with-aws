@@ -7,6 +7,8 @@ import com.amazonaws.fcj.FileMetadata;
 import com.amazonaws.fcj.TestUtils;
 import com.amazonaws.fcj.tags.PerfTest;
 
+import java.time.Duration;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
@@ -62,6 +64,7 @@ class PerformanceTest {
                 .accept(MediaType.APPLICATION_JSON)
                 .body(randomFlux, byte[].class)
                 .retrieve()
-                .bodyToMono(FileMetadata.class);
+                .bodyToMono(FileMetadata.class)
+                .retryBackoff(2, Duration.ofSeconds(3));
     }
 }
