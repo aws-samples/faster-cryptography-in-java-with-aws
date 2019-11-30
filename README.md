@@ -58,6 +58,7 @@ CodeCommit repository. The build stack is driven by a pipeline (AWS
 CodePipeline) that takes the source code, builds a container, and pushes the
 container to a container registry (Amazon ECR).
 ```
+cd cdk
 cdk deploy fcj-build --context "stage=$STAGE"
 # CloudFormation output "FcjSourceRepoCloneUrlHttp" contains the CodeCommit URL
 # to use as remote in the following command.
@@ -77,6 +78,7 @@ to deploy the service stack. Service stack is responsible taking the container
 from the container registry, running it using AWS Fargate, and making it
 available on the network through a load balancer.
 ```
+# Make sure you are still in the cdk directory
 cdk deploy fcj-svc --context "stage=$STAGE"
 ```
 
@@ -98,6 +100,7 @@ Performance test can be started by invoking Gradle task `perfTest` (see below).
 The tests are configured using environment variables (with some sensible
 defaults).
 ```
+# Make sure you're in the project root directory.
 export FCJ_TEST_BASE_URL="http://your-lb.amazonaws.com/"
 FCJ_TEST_FILE_COUNT=10 FCJ_TEST_FILE_SIZE=32MB ./gradlew perfTest
 ```
