@@ -29,3 +29,6 @@ cdk --version
 # Use instance credentials to access codecommit
 git config --global credential.helper '!aws codecommit credential-helper $@'
 git config --global credential.UseHttpPath true
+
+sudo curl -o /usr/local/bin/ecs-cli https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-amd64-latest
+sudo chmod +x /usr/local/bin/ecs-cli
