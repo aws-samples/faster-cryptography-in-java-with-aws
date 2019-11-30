@@ -10,21 +10,17 @@ if ! sudo yum list installed | grep "java-1.8.0-amazon-corretto-devel.x86_64"; t
   wget -O "$CORRETTO_8_PATH" "$CORRETTO_8_URL"
   sudo yum install -y "$CORRETTO_8_PATH"
 
+  JAVA_HOME="$(dirname $(readlink -f $(which javac)))"
+  export JAVA_HOME
+  echo 'export JAVA_HOME="$(dirname $(readlink -f $(which javac)))"' >> ~/.bashrc
+
   java -version
 else
   echo "Amazon Corretto is already installed, skipping"
 fi
 
-
 # push-image.sh depends on jq
 sudo yum install -y jq
-
-# Upgrade Node
-NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-nvm install 12
-nvm alias default 12
-nvm alias stable 12
 
 # Install CDK
 npm install -g aws-cdk
