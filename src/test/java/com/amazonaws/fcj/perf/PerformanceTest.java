@@ -44,7 +44,7 @@ class PerformanceTest {
         LOG.info("Uploading {} files of size {} to {}", fileCount, fileSize, baseUrl);
         final int parallelism = 4;
         final Scheduler scheduler = Schedulers.parallel();
-        Flux.range(1, fileCount)
+        Flux.range(0, fileCount)
                 .parallel(parallelism).runOn(scheduler)
                 .concatMap(i -> {
                     LOG.info("Starting to upload file #{} of size {}", i, fileSize);
