@@ -18,16 +18,21 @@ The service emits various metrics to Amazon CloudWatch. Notably, it emits how
 much CPU time was spent encrypting/decrypting a unit of data so that we can
 measure how much Amazon Corretto Crypto Provider speeds up our service.
 
+Below is an example of a graph we're looking for. Before ACCP was enabled, it
+took our service about 80 ms to encrypt a megabyte of data (~12.5 MB/s
+throughput). After ACCP, it took about 10 ms (~100 MB/s throughput).
+![Deploying ACCP](doc/enabling-accp-graph.png)
+
 ## Instructions
 ### Dev Environment Setup
 1. Log in to your AWS account.
-1. Create your Cloud9 IDE. You can do it manully or click
+2. Create your Cloud9 IDE. You can do it manully or click
    [here](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://faster-cryptography-in-java-with-aws.s3-us-west-2.amazonaws.com/cf-templates/fcj-dev-env.template.json&stackName=Dev-Env-for-FCJ-in-Java-with-AWS)
    to use a prepared AWS CloudFormation template.
-1. If you don't have it open already, open the [Cloud9
+3. If you don't have it open already, open the [Cloud9
    console](https://us-west-2.console.aws.amazon.com/cloud9/home?region=us-west-2#)
    and launch your Cloud9 IDE.
-1. Run the following commands in the terminal of your Cloud9 IDE to clone this
+4. Run the following commands in the terminal of your Cloud9 IDE to clone this
    repository and set up your environment to work with this project.
 ```
 git clone https://github.com/aws-samples/faster-cryptography-in-java-with-aws.git
@@ -160,6 +165,20 @@ difference!
   to execute its business logic in response to client requests.
 * [Docker](https://www.docker.com/) takes care of the environment the service
   runs in.
+
+## See logs from a container running inside an AWS Fargate task
+The container running inside a AWS Fargate tasks emits logs to Amazon CloudWatch. You can see these logs using [Amazon ECS Command Line Interface](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_CLI.html) (ecs-cli):
+Tail most recent log events:
+```
+ecs-cli logs --task-id <your-task-uuid> --cluster faster-cryptography-in-java-$STAGE --follow
+```
+
+Get logs events that happened in between particular timestamps:
+```
+ecs-cli logs --task-id <your-task-uuid> --cluster faster-cryptography-in-java-alpha --start-time "2019-11-30T06:29:00+00:00" --end-time "2019-11-30T06:30:00+00:00"
+```
+
+The logs are sometimes interspersed with empty lines, you can pipe the output through `sed '/^[[:space:]]*$/d'` to remove them.
 
 ## Caveats
 This sample is NOT a production-ready service that can be deployed anywhere
