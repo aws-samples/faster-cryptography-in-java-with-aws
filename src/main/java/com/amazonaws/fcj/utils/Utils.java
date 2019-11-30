@@ -17,17 +17,10 @@ public class Utils {
 
     private static final String ETAG_ALGORITHM = "MD5";
 
-    private static final ThreadLocal<MessageDigest> CHECKSUM_DIGEST_LOCAL =
-            ThreadLocal.withInitial(() -> Utils.getMessageDigest(ETAG_ALGORITHM));
-
     /**
      * Our default cryptographic hash function.
      */
     private static final String DEFAULT_CRYPTOGRAPHIC_HASH = "SHA-256";
-
-    private static final ThreadLocal<MessageDigest> CRYPTO_HASH_THREAD_LOCAL =
-            ThreadLocal.withInitial(() -> Utils.getMessageDigest(DEFAULT_CRYPTOGRAPHIC_HASH));
-
 
     /**
      * Concatenates all byte arrays in the list together and returns the result.
@@ -69,11 +62,11 @@ public class Utils {
     }
 
     public static MessageDigest getMessageDigestForETag() {
-        return CHECKSUM_DIGEST_LOCAL.get();
+        return getMessageDigest(ETAG_ALGORITHM);
     }
 
     public static MessageDigest getMessageDigestForDefaultHash() {
-        return CRYPTO_HASH_THREAD_LOCAL.get();
+        return getMessageDigest(DEFAULT_CRYPTOGRAPHIC_HASH);
     }
 
     private static MessageDigest getMessageDigest(final String algorithm) {
