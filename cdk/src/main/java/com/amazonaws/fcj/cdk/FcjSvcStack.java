@@ -51,8 +51,11 @@ import software.amazon.awscdk.services.s3.BucketProps;
  */
 public class FcjSvcStack extends Stack {
     private static final Duration ECS_TASK_ROLE_MAX_SESSION_DURATION = Duration.hours(8);
-    private static final int ECS_TASK_MEMORY_LIMIT_MB = 1024;
-    private static final String ECS_TASK_JVM_MAX_HEAP_SIZE = format("-Xmx%sm", ECS_TASK_MEMORY_LIMIT_MB / 2);
+
+    private static final int ECS_TASK_CPU_UNITS = 2048; // 2 vCPU
+    private static final int ECS_TASK_MEMORY_LIMIT_MB = 4096;
+    private static final String ECS_TASK_JVM_MAX_HEAP_SIZE = "-Xmx3g";
+
     private final String svcNameWithStage;
 
     public FcjSvcStack(final Construct parent, final String id) {
@@ -89,7 +92,7 @@ public class FcjSvcStack extends Stack {
                         ApplicationLoadBalancedFargateServiceProps.builder()
                                 .cluster(ecsCluster)
                                 .serviceName(svcNameWithStage)
-                                .cpu(512)
+                                .cpu(ECS_TASK_CPU_UNITS)
                                 .memoryLimitMiB(ECS_TASK_MEMORY_LIMIT_MB)
                                 .publicLoadBalancer(true)
                                 .taskImageOptions(
