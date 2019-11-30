@@ -10,7 +10,7 @@ if ! sudo yum list installed | grep "java-1.8.0-amazon-corretto-devel.x86_64"; t
   wget -O "$CORRETTO_8_PATH" "$CORRETTO_8_URL"
   sudo yum install -y "$CORRETTO_8_PATH"
 
-  JAVA_HOME="$(dirname $(readlink -f $(which javac)))"
+  JAVA_HOME="/usr/lib/jvm/java-1.8.0-amazon-corretto/"
   export JAVA_HOME
   echo 'export JAVA_HOME="$(dirname $(readlink -f $(which javac)))"' >> ~/.bashrc
 
