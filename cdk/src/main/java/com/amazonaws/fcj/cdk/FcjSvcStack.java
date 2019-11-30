@@ -10,6 +10,10 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+import java.text.MessageFormat;
+
+import software.amazon.awscdk.core.CfnOutput;
+import software.amazon.awscdk.core.CfnOutputProps;
 import software.amazon.awscdk.core.Construct;
 import software.amazon.awscdk.core.Duration;
 import software.amazon.awscdk.core.RemovalPolicy;
@@ -111,6 +115,14 @@ public class FcjSvcStack extends Stack {
                         .interval(Duration.seconds(10))
                         .healthyHttpCodes("200")
                         .build());
+
+        final String ecsConsoleUrl = MessageFormat.format(
+                "https://{0}.console.aws.amazon.com/ecs/home?region={0}#/clusters/{1}/services",
+                getRegion(), lbFargateSvc.getService().getServiceName());
+        new CfnOutput(this, "EcsConsoleUrl", CfnOutputProps.builder()
+                .value(ecsConsoleUrl)
+                .description("AWS Console URL for the Fargate cluster hosting our sample service")
+                .build());
     }
 
     private Bucket createMainStorageBucket() {
