@@ -30,7 +30,7 @@ measure how much Amazon Corretto Crypto Provider speeds up our service.
 1. Run the following commands in the terminal of your Cloud9 IDE to clone this
    repository and set up your environment to work with this project.
 ```
-git clone git@github.com:aws-samples/faster-cryptography-in-java-with-aws.git
+git clone https://github.com/aws-samples/faster-cryptography-in-java-with-aws.git
 cd faster-cryptography-in-java-with-aws
 ./setup_env.sh
 ```
