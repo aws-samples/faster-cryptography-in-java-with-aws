@@ -12,7 +12,7 @@ if ! sudo yum list installed | grep "java-1.8.0-amazon-corretto-devel.x86_64"; t
 
   JAVA_HOME="/usr/lib/jvm/java-1.8.0-amazon-corretto/"
   export JAVA_HOME
-  echo 'export JAVA_HOME="$(dirname $(readlink -f $(which javac)))"' >> ~/.bashrc
+  echo "export JAVA_HOME=\"$JAVA_HOME\"" >> ~/.bashrc
 
   java -version
 else
