@@ -37,7 +37,7 @@ throughput). After ACCP, it took about 10 ms (~100 MB/s throughput).
 ```
 git clone https://github.com/aws-samples/faster-cryptography-in-java-with-aws.git
 cd faster-cryptography-in-java-with-aws
-./setup_env.sh
+source setup_env.sh
 ```
 
 ### Building the Sample Code
