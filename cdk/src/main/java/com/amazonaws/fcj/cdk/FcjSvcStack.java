@@ -11,6 +11,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import java.text.MessageFormat;
+import java.util.Map;
 
 import software.amazon.awscdk.core.CfnOutput;
 import software.amazon.awscdk.core.CfnOutputProps;
@@ -19,6 +20,12 @@ import software.amazon.awscdk.core.Duration;
 import software.amazon.awscdk.core.RemovalPolicy;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
+import software.amazon.awscdk.services.cloudwatch.Dashboard;
+import software.amazon.awscdk.services.cloudwatch.DashboardProps;
+import software.amazon.awscdk.services.cloudwatch.GraphWidget;
+import software.amazon.awscdk.services.cloudwatch.GraphWidgetProps;
+import software.amazon.awscdk.services.cloudwatch.Metric;
+import software.amazon.awscdk.services.cloudwatch.MetricProps;
 import software.amazon.awscdk.services.ec2.Vpc;
 import software.amazon.awscdk.services.ec2.VpcProps;
 import software.amazon.awscdk.services.ecr.IRepository;
@@ -126,6 +133,8 @@ public class FcjSvcStack extends Stack {
                 .value(ecsConsoleUrl)
                 .description("AWS Console URL for the Fargate cluster hosting our sample service")
                 .build());
+
+        createDashboard();
     }
 
     private Bucket createMainStorageBucket() {
@@ -200,5 +209,44 @@ public class FcjSvcStack extends Stack {
                 .policy(defaultKeyPolicy)
                 .removalPolicy(RemovalPolicy.DESTROY)
                 .build());
+    }
+
+    /**
+     * Creates a very simple CloudWatch dashboard.
+     */
+    private void createDashboard() {
+        final Dashboard fcjDash = new Dashboard(this, "FcjDash", DashboardProps.builder()
+                .dashboardName(svcNameWithStage)
+                .build());
+
+        final GraphWidget widget = new GraphWidget(
+                GraphWidgetProps.builder()
+                        .width(16)
+                        .height(10)
+                        .stacked(true)
+                        .left(ImmutableList.of(createMetric("encrypt.duration.perMb")))
+                        .build());
+
+        fcjDash.addWidgets(widget);
+
+        final String dashboardConsoleUrl = MessageFormat.format(
+                "https://{0}.console.aws.amazon.com/cloudwatch/home?region={0}#dashboards:name={1}",
+                getRegion(), svcNameWithStage);
+        new CfnOutput(this, "FcjDashboard", CfnOutputProps.builder().value(dashboardConsoleUrl).build());
+    }
+
+    private Metric createMetric(final String metricName) {
+        final Map<String, Object> dimensions = ImmutableMap.of(
+                "Stage", StageHelper.getStage(this),
+                "Region", getRegion());
+
+        return new Metric(
+                MetricProps.builder()
+                        .metricName(metricName)
+                        .statistic("p99")
+                        .period(Duration.minutes(1))
+                        .namespace(svcNameWithStage)
+                        .dimensions(dimensions)
+                        .build());
     }
 }
