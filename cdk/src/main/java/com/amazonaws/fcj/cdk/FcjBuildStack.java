@@ -18,6 +18,7 @@ import software.amazon.awscdk.core.StackProps;
 import software.amazon.awscdk.services.codebuild.BuildEnvironment;
 import software.amazon.awscdk.services.codebuild.BuildEnvironmentVariable;
 import software.amazon.awscdk.services.codebuild.CodeCommitSourceProps;
+import software.amazon.awscdk.services.codebuild.LinuxBuildImage;
 import software.amazon.awscdk.services.codebuild.Project;
 import software.amazon.awscdk.services.codebuild.ProjectProps;
 import software.amazon.awscdk.services.codebuild.Source;
@@ -81,7 +82,10 @@ public class FcjBuildStack extends Stack {
 
         final Project fcjBuildProject = new Project(this, "fcjBuildProject", ProjectProps.builder()
                 .projectName(svcName)
-                .environment(BuildEnvironment.builder().privileged(true).build())
+                .environment(BuildEnvironment.builder()
+                                     .buildImage(LinuxBuildImage.AMAZON_LINUX_2)
+                                     .privileged(true)
+                                     .build())
                 .source(Source.codeCommit(CodeCommitSourceProps.builder().repository(fcjSourceRepo).build()))
                 .environmentVariables(ImmutableMap.of(
                         "IMAGE_NAME",
