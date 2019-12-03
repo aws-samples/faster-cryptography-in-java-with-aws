@@ -26,10 +26,10 @@ throughput). After ACCP, it took about 10 ms (~100 MB/s throughput).
 ## Instructions
 ### Dev Environment Setup
 1. Log in to your AWS account.
-2. Create your Cloud9 IDE. You can do it manully or click
+2. Create your Cloud9 IDE. You can do it manually or click
    [here](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://faster-cryptography-in-java-with-aws.s3-us-west-2.amazonaws.com/cf-templates/fcj-dev-env.template.json&stackName=Dev-Env-for-FCJ-in-Java-with-AWS)
    to use a prepared AWS CloudFormation template.
-3. If you don't have it open already, open the [Cloud9
+3. Open the [Cloud9
    console](https://us-west-2.console.aws.amazon.com/cloud9/home?region=us-west-2#)
    and launch your Cloud9 IDE.
 4. Run the following commands in the terminal of your Cloud9 IDE to clone this
@@ -71,7 +71,7 @@ git remote add fcj-$STAGE <FILL IN codecommit remote url from CF output>
 git push fcj-$STAGE
 ```
 
-There are two more CloudFormation outputs you should explore at this point:
+There are two more CloudFormation outputs you can explore at this point:
 1. Pipeline console URL shows you the pipeline and how the build process is
    coming along.
 2. Container registry (Amazon ECR) console URL shows you containers in your
@@ -85,19 +85,6 @@ available on the network through a load balancer.
 ```
 # Make sure you are still in the cdk directory
 cdk deploy fcj-svc --context "stage=$STAGE"
-```
-
-AWS Fargate will automatically use the latest container in the registry when
-starting a new task. However, AWS Fargate will not automatically replace
-currently running tasks when a new container is pushed into the container
-registry. The solution to this problem is to add AWS CodeDeploy with Blue/Green
-Deployments to the end of your pipeline. Unfortunately, at the time of writing
-this is not yet supported in AWS CDK.
-
-For the purposes of our workshop, we'll simply poke AWS Fargate using AWS CLI
-and force a new deployment:
-```
-aws ecs update-service --cluster faster-cryptography-in-java-$STAGE --service faster-cryptography-in-java-$STAGE --force-new-deployment
 ```
 
 ### Measuring Performance
@@ -114,10 +101,16 @@ When the performance test has run its course, check out your CloudWatch metrics.
 The sample service emits two metrics called `encrypt.duration.perMb` and
 `decrypt.duration.perMb`.
 
-You can use the following link to CloudWatch console if your stack runs in
-us-west-2 and your stage is "alpha":
+An Amazon CloudWatch dashboard was created for you during the service stack
+deployment above. The CloudFormation output "fcj-svc.FcjDashboard" has the URL
+to it. If you are running in us-west-2 and your stage is "alpha", [this link
+will take you to the
+dashboard](https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#dashboards:name=faster-cryptography-in-java-alpha).
+
+You can also use the following link to CloudWatch console to go directly to the
+metric. The link assumes your stack runs in us-west-2 and your stage is "alpha":
 ```
-https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#metricsV2:graph=~(view~'timeSeries~stacked~false~metrics~(~(~'faster-cryptography-in-java-alpha~'encrypt.duration.perMb~'Stage~'alpha~'Region~'us-west-2))~region~'us-west-2);query=~'*7bfaster-cryptography-in-java-alpha*2cRegion*2cStage*7d
+https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#metricsV2:graph=~(view~'timeSeries~region~'us-west-2~stacked~true~metrics~(~(~'faster-cryptography-in-java-alpha~'encrypt.duration.perMb~'Stage~'alpha~'Region~'us-west-2~(yAxis~'left~period~60~stat~'p99)))~start~'-PT12H~end~'P0D)
 ```
 
 ### Enabling Amazon Corretto Crypto Provider
@@ -126,9 +119,39 @@ ACCP and see what difference it's going to make.
 
 Open file
 [FcjServiceConfig](https://github.com/aws-samples/faster-cryptography-in-java-with-aws/blob/master/src/main/java/com/amazonaws/fcj/FcjServiceConfig.java#L56)
-and find a bean called "enableAccp". Uncomment it to enable ACCP. Deploy the
-sample again (see above), measure performance again, and see if it made any
+and find a bean called "enableAccp". Uncomment it to enable ACCP.
+
+Deploy the changes, measure performance again, and see if it made any
 difference!
+
+### Making and deploying a change
+```
+# Make your change. This example shows Vim but you can obviously use any editor.
+vi src/main/java/com/amazonaws/fcj/FcjServiceConfig.java
+# Add your changes to git index
+git add -A
+# Commit your changes
+git commit -v
+# Push your changes to your CodeCommit repository (part of the build stack)
+git push fcj-$STAGE
+```
+At this point, the AWS CodePipeline in your build stack will drive this change
+from the repository to your AWS CodeBuild project which will build the code
+base, make a container out of it, and push it to to container registry (Amazon
+ECR).
+
+AWS Fargate will automatically use the latest container in the registry when
+starting a new task. However, **AWS Fargate will not automatically replace
+currently running tasks when a new container is pushed into the container
+registry.** The solution to this problem is to add AWS CodeDeploy with Blue/Green
+Deployments to the end of your pipeline. Unfortunately, at the time of writing
+this is not yet supported in AWS CDK.
+
+For the purposes of this sample, we'll simply poke AWS Fargate using AWS CLI and
+force a new deployment:
+```
+aws ecs update-service --cluster faster-cryptography-in-java-$STAGE --service faster-cryptography-in-java-$STAGE --force-new-deployment
+```
 
 ## Under the Hood
 * [Amazon Corretto Crypto
@@ -167,8 +190,10 @@ difference!
   runs in.
 
 ## See logs from a container running inside an AWS Fargate task
-The container running inside a AWS Fargate tasks emits logs to Amazon CloudWatch. You can see these logs using [Amazon ECS Command Line Interface](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_CLI.html) (ecs-cli):
-Tail most recent log events:
+The container running inside a AWS Fargate tasks emits logs to Amazon
+CloudWatch. You can see these logs using [Amazon ECS Command Line
+Interface](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_CLI.html)
+(ecs-cli): Tail most recent log events:
 ```
 ecs-cli logs --task-id <your-task-uuid> --cluster faster-cryptography-in-java-$STAGE --follow
 ```
@@ -178,7 +203,8 @@ Get logs events that happened in between particular timestamps:
 ecs-cli logs --task-id <your-task-uuid> --cluster faster-cryptography-in-java-alpha --start-time "2019-11-30T06:29:00+00:00" --end-time "2019-11-30T06:30:00+00:00"
 ```
 
-The logs are sometimes interspersed with empty lines, you can pipe the output through `sed '/^[[:space:]]*$/d'` to remove them.
+The logs are sometimes interspersed with empty lines, you can pipe the output
+through `sed '/^[[:space:]]*$/d'` to remove them.
 
 ## Caveats
 This sample is NOT a production-ready service that can be deployed anywhere
