@@ -89,17 +89,19 @@ cdk deploy fcj-svc --context "stage=$STAGE"
 
 ### Measuring Performance
 Performance test can be started by invoking Gradle task `perfTest` (see below).
-The tests are configured using environment variables (with some sensible
-defaults).
+The performance test uploads the specified number of files of the specified
+size. The contents of the files are random (output of SecureRandom). The tests
+are configured using environment variables (with some sensible defaults).
+
 ```
 # Make sure you're in the project root directory.
 export FCJ_TEST_BASE_URL="http://your-lb.amazonaws.com/"
-FCJ_TEST_FILE_COUNT=10 FCJ_TEST_FILE_SIZE=32MB ./gradlew perfTest
+FCJ_TEST_FILE_COUNT=300 FCJ_TEST_FILE_SIZE=32MB ./gradlew perfTest
 ```
 
 When the performance test has run its course, check out your CloudWatch metrics.
-The sample service emits two metrics called `encrypt.duration.perMb` and
-`decrypt.duration.perMb`.
+The sample service emits a metric called `encrypt.duration.perMb` for all
+encryption operations.
 
 An Amazon CloudWatch dashboard was created for you during the service stack
 deployment above. The CloudFormation output "fcj-svc.FcjDashboard" has the URL
