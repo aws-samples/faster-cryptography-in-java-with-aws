@@ -25,14 +25,19 @@ throughput). After ACCP, it took about 10 ms (~100 MB/s throughput).
 
 ## Instructions
 ### Dev Environment Setup
-1. Log in to your AWS account.
-2. Create your Cloud9 IDE. You can do it manually or click
-   [here](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://faster-cryptography-in-java-with-aws.s3-us-west-2.amazonaws.com/cf-templates/fcj-dev-env.template.json&stackName=Dev-Env-for-FCJ-in-Java-with-AWS)
-   to use a prepared AWS CloudFormation template.
-3. Open the [Cloud9
+1. Log in to your AWS account. Make sure this is not a production account! If
+   you are in an AWS-sponsored event, an AWS account may have been provided to
+   you.
+1. Create your Cloud9 IDE by clicking
+   [here](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://faster-cryptography-in-java-with-aws.s3-us-west-2.amazonaws.com/cf-templates/fcj-dev-env.template.json&stackName=Dev-Env-for-FCJ-in-Java-with-AWS).
+   Your new Cloud9 IDE will be created using AWS CloudFormation from a
+   predefined template specific to this workshop.
+2. Look in the Outputs tab of the AWS CloudFormation stack that created your
+   IDE. It should have an output called IdeUrl. Click that URL to open your
+   Cloud9 IDE. Alternatively, you can open the [Cloud9
    console](https://us-west-2.console.aws.amazon.com/cloud9/home?region=us-west-2#)
-   and launch your Cloud9 IDE.
-4. Run the following commands in the terminal of your Cloud9 IDE to clone this
+   and launch your Cloud9 IDE from there.
+3. Run the following commands in the terminal of your Cloud9 IDE to clone this
    repository and set up your environment to work with this project.
 ```
 git clone https://github.com/aws-samples/faster-cryptography-in-java-with-aws.git
