@@ -69,7 +69,7 @@ CodePipeline) that takes the source code, builds a container, and pushes the
 container to a container registry (Amazon ECR).
 ```
 cd cdk
-cdk deploy fcj-build --context "stage=$STAGE"
+cdk deploy fcj-build --context "stage=$STAGE" --require-approval never
 # CloudFormation output "FcjSourceRepoCloneUrlHttp" contains the CodeCommit URL
 # to use as remote in the following command.
 git remote add fcj-$STAGE <FILL IN codecommit remote url from CF output>
@@ -89,7 +89,7 @@ from the container registry, running it using AWS Fargate, and making it
 available on the network through a load balancer.
 ```
 # Make sure you are still in the cdk directory
-cdk deploy fcj-svc --context "stage=$STAGE"
+cdk deploy fcj-svc --context "stage=$STAGE" --require-approval never
 ```
 
 ### Measuring Performance
