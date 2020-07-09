@@ -23,6 +23,8 @@ took our service about 80 ms to encrypt a megabyte of data (~12.5 MB/s
 throughput). After ACCP, it took about 10 ms (~100 MB/s throughput).
 ![Deploying ACCP](doc/enabling-accp-graph.png)
 
+[Security issue notifications](./CONTRIBUTING.md#security-issue-notifications)
+
 ## Instructions
 ### Dev Environment Setup
 1. Log in to your AWS account. Make sure this is not a production account! If
